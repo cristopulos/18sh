@@ -364,20 +364,24 @@ const displayContent = () => {
 		currency: _getCurrency(),
 	}
 	if (gameState.bankSize) {
-		displayContent.cash.bank = _getBankRemains()
+		displayContent.cash.bank = {cash:_getBankRemains()}
 	} else {
 		const totalCash = Object.keys(_getAllCash()).reduce((total, player) => {
 			total += _getCash(player)
 			return total
 		}, 0)
-		displayContent.cash.total = totalCash
+		displayContent.cash.total = {cash: totalCash}
 	}
 	_getPlayers().forEach((player) => {
-		const cash = _getCash(player)
+		let cash = { cash: _getCash(player),
+			value: _calculatePlayerValue(player),
+		}
 		displayContent.cash[player] = cash
 	})
 	_getAllCompanies().forEach((company) => {
-		const cash = _getCash(company)
+		let cash = { cash: _getCash(company),
+			value: _getValue(company),
+		}
 		displayContent.cash[company] = cash
 	})
 	return displayContent
