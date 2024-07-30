@@ -8,12 +8,14 @@ const gameState = {
 	gameName: "",
 	cash: [],
 	companyCash: [],
+	companyShareSize: [],
 	values: [],
 	bankSize: null,
 	undid: "",
 	currency: "$",
 	parameters: [],
 	income: [],
+	players: [],
 }
 
 /* Reset game state. */
@@ -106,6 +108,22 @@ const sellShares = (actor, company, quantity, price) => {
 	return feedback
 }
 
+const shortShares = (actor, company, quantity, price) => {
+	const shares = stockHoldings.getSharesOwned(actor);
+	const sharesOwnedPre = 0;
+	if(shares !== undefined)
+		Object.hasOwn(shares, company) ? shares[company] : 0
+	
+	let feedback = stockHoldings.changeSharesOwned(actor, company, quantity * -1, true)
+	const sharesOwnedPost = stockHoldings.getSharesOwned(actor)[company]
+	const actualSoldQuantity = sharesOwnedPre - sharesOwnedPost
+	const sum = price * actualSoldQuantity
+	if (price > 0) {
+		feedback += "\n" + changeCash(actor, sum)
+	}
+	return feedback
+}
+
 const _getSharesOwned = () => stockHoldings.getSharesOwned()
 
 /* Sets and gets player or company cash. */
@@ -174,7 +192,28 @@ const _getPlayers = () => {
 
 /* Dividend payments. */
 
-const payDividends = (payingCompany, value) => {
+const getShareSize = (company) => {
+	if(gameState.companyShareSize !== undefined && gameState.companyShareSize[company] !== undefined)
+		return gameState.companyShareSize[company]
+	else
+		return 10;
+}
+
+const setShareSize = (company, new_size) => {
+	gameState.companyShareSize[company] = new_size;
+	return `${company} sharesize is now ${new_size}.\n`
+}
+
+const payDividends = (payingCompany, totalSum) => {
+	if (isNaN(totalSum)) totalSum = 0
+
+	let value = totalSum / getShareSize(payingCompany);
+	let feedback = `${payingCompany} pays ^y${_getCurrency()}${value}^ per share.\n`
+	feedback += _payDividends(payingCompany, value)
+	return feedback
+}
+
+const _payDividends = (payingCompany, value) => {
 	if (isNaN(value)) value = 0
 
 	let feedback = ""
@@ -186,6 +225,13 @@ const payDividends = (payingCompany, value) => {
 			feedback += `${payingCompany} pays ${player} ^y${_getCurrency()}${moneyEarned}^ for ${
 				sharesOwned[player]
 			} shares.\n`
+		}
+
+		if (moneyEarned < 0) {
+			changeCash(player, moneyEarned)
+			feedback += `${player} pays ^y${_getCurrency()}${Math.abs(moneyEarned)}^ for ${
+				Math.abs(sharesOwned[player])
+			} shorts.\n`
 		}
 	})
 	return feedback
@@ -200,27 +246,27 @@ const payHalfDividends = (payingCompany, totalSum) => {
 	let perShare = 0
 	switch (rounding) {
 		case "UP": {
-			const halfFloored = Math.ceil(totalSum / 20)
-			companyRetains = halfFloored * 10
-			perShare = (totalSum - companyRetains) / 10
+			const halfFloored = Math.ceil(totalSum / getShareSize(payingCompany) * 2)
+			companyRetains = halfFloored * getShareSize(payingCompany)
+			perShare = (totalSum - companyRetains) / getShareSize(payingCompany)
 			break
 		}
 		case "1837": {
 			companyRetains = totalSum / 2
-			perShare = (totalSum - companyRetains) / 10
+			perShare = (totalSum - companyRetains) / getShareSize(payingCompany)
 			break
 		}
 		default: {
-			const halfFloored = Math.floor(totalSum / 20)
-			companyRetains = halfFloored * 10
-			perShare = (totalSum - companyRetains) / 10
+			const halfFloored = Math.floor(totalSum / getShareSize(payingCompany) * 2)
+			companyRetains = halfFloored * getShareSize(payingCompany)
+			perShare = (totalSum - companyRetains) / getShareSize(payingCompany)
 		}
 	}
 
 	changeCash(payingCompany, companyRetains)
 
 	feedback = `${payingCompany} retains ^y${_getCurrency()}${companyRetains}^:.\n`
-	feedback += payDividends(payingCompany, perShare)
+	feedback += _payDividends(payingCompany, perShare)
 
 	return feedback
 }
@@ -351,7 +397,8 @@ const statusBarContent = () => {
 	_getAllCompanies().forEach((company) => {
 		const value = _getValue(company)
 		const cash = _getCash(company)
-		barContent.companies += `\t${company} ${_getCurrency()}${cash}`
+		const share_size = getShareSize(company)
+		barContent.companies += `\t${company}(${share_size}) ${_getCurrency()}${cash}`
 		if (value !== 0) barContent.companies += ` (${_getCurrency()}${value})`
 	})
 	return barContent
@@ -381,6 +428,7 @@ const displayContent = () => {
 	_getAllCompanies().forEach((company) => {
 		let cash = { cash: _getCash(company),
 			value: _getValue(company),
+			sharesize: getShareSize(company),
 		}
 		displayContent.cash[company] = cash
 	})
@@ -389,9 +437,10 @@ const displayContent = () => {
 
 /* Floats and closes a company. */
 
-const float = (company, cash) => {
+const float = (company, cash, share_size = 10) => {
 	gameState.companyCash[company] = cash
-	return `Floated ^y${company}^ with ^y${_getCurrency()}${cash}^:.\n`
+	setShareSize(company, share_size)
+	return `Floated ${share_size} shares ^y${company}^ with ^y${_getCurrency()}${cash}^:.\n`
 }
 
 const close = (company) => {
@@ -401,11 +450,28 @@ const close = (company) => {
 	return `Closed ^y${company}^:.\n`
 }
 
+const is_company = (name) => {
+	return gameState.companyCash[name] !== undefined
+}
+
 /* Removes a player */
+
+const add = (player, cash) => {
+	gameState.cash[player] = cash;
+	return `Added ^y${player}^ with ^y${_getCurrency()}${cash}^:.\n`
+}
 
 const remove = (player) => {
 	Reflect.deleteProperty(gameState.cash, player)
 	stockHoldings.removePlayer(player)
+}
+
+const is_player = (name) => {
+	return gameState.cash[name] !== undefined
+}
+
+const is_entity = (name) => {
+	return is_company(name) || is_player(name)
 }
 
 /* Gets all companies in play. */
@@ -526,6 +592,9 @@ module.exports = {
 	addToHistory,
 	buyShares,
 	sellShares,
+	shortShares,
+	getShareSize,
+	setShareSize,
 	payDividends,
 	payHalfDividends,
 	deleteGame,
@@ -546,7 +615,11 @@ module.exports = {
 	setValue,
 	float,
 	close,
+	add,
 	remove,
+	is_company,
+	is_player,
+	is_entity,
 	nextRound,
 	setParameter,
 	setIncome,

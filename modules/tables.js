@@ -12,7 +12,7 @@ const holdingsTable = (companies, sharesOwned, cash) => {
 		if (cash[owner]) rowCash = cash[owner]
 		let row = [owner, rowCash]
 		companies.forEach(company => {
-			if (sharesOwned[owner][company] > 0) {
+			if (sharesOwned[owner][company] !== undefined) {
 				row.push(sharesOwned[owner][company])
 			} else {
 				row.push(0)

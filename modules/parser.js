@@ -249,6 +249,29 @@ const parse = command => {
 					comment
 				}
 				break
+			case "sz":
+			case "size":
+			case "sharesize":
+				result = {
+					verb: "sharesize",
+					subject,
+					quantity,
+					comment
+				}
+				break
+			case "sh":
+			case "sho":
+			case "shor":
+			case "short":
+				result = {
+					verb: "short",
+					object,
+					subject,
+					quantity,
+					price: 0,
+					comment
+				}
+				break
 			case "d":
 			case "di":
 			case "div":
@@ -315,6 +338,21 @@ const parse = command => {
 			case "float":
 				result = {
 					verb: "float",
+					object,
+					subject,
+					quantity,
+					price:10,
+					comment
+				}
+				break
+			case "p":
+			case "pl":
+			case "pla":
+			case "play":
+			case "playe":
+			case "player":
+				result = {
+					verb: "player",
 					object,
 					subject,
 					quantity,
@@ -446,6 +484,42 @@ const parse = command => {
 				}
 				break
 			}
+			case "sh":
+			case "sho":
+			case "shor":
+			case "short":
+				{
+					let verb = "short"
+					let quantity = 1
+					let object = null
+					let price = 0
+					let argNumber = 2
+					if (isNaN(parseInt(parts[argNumber]))) {
+						object = parts[argNumber].toUpperCase()
+						argNumber += 1
+					} else {
+						quantity = parseInt(parts[argNumber])
+						object = parts[argNumber + 1].toUpperCase()
+						argNumber += 2
+					}
+					if (typeof parts[argNumber] !== "undefined") {
+						if (parts[argNumber].substring(0, 1) === "@") {
+							price = parseInt(parts[argNumber].substring(1))
+						} else {
+							price = parseInt(parts[argNumber])
+						}
+					}
+
+					result = {
+						verb,
+						object,
+						subject,
+						quantity,
+						price,
+						comment
+					}
+					break
+				}
 			case "g":
 			case "gi":
 			case "giv":
@@ -467,6 +541,20 @@ const parse = command => {
 				}
 				break
 			}
+			case "f":
+			case "fl":
+			case "flo":
+			case "floa":
+			case "float":
+				result = {
+					verb: "float",
+					object: parts[1].toUpperCase(),
+					subject,
+					quantity: parseInt(parts[2]),
+					price: parseInt(parts[3]),
+					comment
+				}
+				break
 			default:
 				result = {
 					verb: null,

@@ -11,14 +11,14 @@ const setSharesOwned = newSharesOwned => {
 	sharesOwned = newSharesOwned
 }
 
-const changeSharesOwned = (actor, company, quantity) => {
+const changeSharesOwned = (actor, company, quantity, allow_shorts = false) => {
 	let feedback = ""
 	const sharesOwned = getSharesOwned()
 	if (!sharesOwned[actor]) sharesOwned[actor] = []
 	if (!sharesOwned[actor][company]) sharesOwned[actor][company] = 0
 
 	const quantityInt = parseInt(quantity)
-	if (quantityInt < 0 && Math.abs(quantityInt) > sharesOwned[actor][company]) {
+	if (!allow_shorts && quantityInt < 0 && Math.abs(quantityInt) > sharesOwned[actor][company]) {
 		feedback = `${actor} only has ${sharesOwned[actor][company]}, selling all.\n`
 		sharesOwned[actor][company] = 0
 	} else if (!isNaN(quantityInt)) {
@@ -49,6 +49,15 @@ const getCompanyOwners = company => {
 		return accumulator
 	}, [])
 	return owners
+}
+
+const getNumberOfOwnedStocks = (company) => {
+	const owners = getCompanyOwners(company);
+	const init = 0;
+	const result = Object.keys(owners).reduce((acc, owner) =>{
+		acc += owners[owner]; return acc}, init)
+	
+	return result;
 }
 
 const closeCompany = company => {
@@ -88,5 +97,6 @@ module.exports = {
 	closeCompany,
 	removePlayer,
 	getCompanies,
-	resetHoldings
+	resetHoldings,
+	getNumberOfOwnedStocks,
 }

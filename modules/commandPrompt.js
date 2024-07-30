@@ -6,8 +6,22 @@ const gameState = require("./gameState")
 const statusBar = require("./statusBar")
 const updateDisplay = require("./display")
 const usage = require("./usage")
+const stockHoldings = require("./stockHoldings")
 
 var updateMode = false
+
+const _getNumberOfAvailableStocks = (company, source) => {
+	if (source) {
+		const portfolio = stockHoldings.getSharesOwned(source)
+		if (portfolio[company] !== undefined)
+			return portfolio[company];
+		else
+			return 0;
+	}
+	else {
+		return gameState.getShareSize(company) - stockHoldings.getNumberOfOwnedStocks(company);
+	}
+}
 
 const initialize = () => {
 	term.fullscreen()
@@ -85,7 +99,7 @@ const commandPrompt = () => {
 						/* Opening a stored game should always be possible */
 						input.startsWith("o") ||
 						/* Starting a new game should always be possible */
-						input.startsWith("start") || 
+						input.startsWith("start") ||
 						/* Listing existing games should always be possible */
 						input.startsWith("l")) {
 						perform(input)
@@ -143,62 +157,172 @@ const perform = (command, silent = false) => {
 			addToHistory = false
 			break
 		case "buy":
-			echoToTerm(
-				gameState.buyShares(
-					action.subject,
-					action.object,
-					action.quantity,
-					action.price,
-					action.source
-				)
-			)
-			normalizedCommand = `${action.subject} ${action.verb} ${action.quantity} ${action.object}`
-			if (action.price) normalizedCommand += ` @${action.price}`
-			if (action.source) normalizedCommand += ` from ${action.source}`
-			addToHistory = true
+			if (gameState.is_company(action.object)) {
+				if (gameState.is_entity(action.subject)) {
+					if (_getNumberOfAvailableStocks(action.object, action.source) >= action.quantity) {
+						echoToTerm(
+							gameState.buyShares(
+								action.subject,
+								action.object,
+								action.quantity,
+								action.price,
+								action.source
+							)
+						)
+
+						normalizedCommand = `${action.subject} ${action.verb} ${action.quantity} ${action.object}`
+						if (action.price) normalizedCommand += ` @${action.price}`
+						if (action.source) normalizedCommand += ` from ${action.source}`
+						addToHistory = true
+					}
+					else {
+						const source = action.source ? action.source : "market";
+						echoToTerm(`^rThere is no ${action.quantity} stocks of ${action.subject} left in the ${source}^\n`)
+					}
+				}
+				else {
+					echoToTerm(`^r${action.subject} is not an entity^\n`)
+				}
+			}
+			else {
+				echoToTerm(`^r${action.object} is not a company^\n`)
+			}
 			break
 		case "sell":
-			echoToTerm(
-				gameState.sellShares(
-					action.subject,
-					action.object,
-					action.quantity,
-					action.price
-				)
-			)
-			normalizedCommand = `${action.subject} ${action.verb} ${action.quantity} ${action.object}`
-			if (action.price) normalizedCommand += ` @${action.price}`
-			addToHistory = true
+			if (gameState.is_company(action.object)) {
+				if (gameState.is_entity(action.subject)) {
+					if (stockHoldings.getSharesOwned(action.subject) !== undefined && stockHoldings.getSharesOwned(action.subject)[action.object] !== undefined && stockHoldings.getSharesOwned(action.subject)[action.object] >= action.quantity) {
+						echoToTerm(
+							gameState.sellShares(
+								action.subject,
+								action.object,
+								action.quantity,
+								action.price
+							)
+						)
+						normalizedCommand = `${action.subject} ${action.verb} ${action.quantity} ${action.object}`
+						if (action.price) normalizedCommand += ` @${action.price}`
+						addToHistory = true
+					}
+					else {
+						echoToTerm(`^r${action.subject} does not have at least ${action.quantity} of ${action.object} shares ^\n`)
+					}
+				}
+				else {
+					echoToTerm(`^r${action.subject} is not an entity^\n`)
+				}
+			}
+			else {
+				echoToTerm(`^r${action.object} is not a company^\n`)
+			}
+			break
+		case "short":
+			if (gameState.is_company(action.object)) {
+				if (gameState.is_entity(action.subject)) {
+					if (stockHoldings.getSharesOwned(action.subject) === undefined || stockHoldings.getSharesOwned(action.subject)[action.object] === undefined || stockHoldings.getSharesOwned(action.subject)[action.object] <= 0) {
+						echoToTerm(
+							gameState.shortShares(
+								action.subject,
+								action.object,
+								action.quantity,
+								action.price
+							)
+						)
+						normalizedCommand = `${action.subject} ${action.verb} ${action.quantity} ${action.object}`
+						if (action.price) normalizedCommand += ` @${action.price}`
+						addToHistory = true
+					}
+					else {
+						echoToTerm(`^r${action.subject} can't short ${action.quantity} of ${action.object} when owning those stocks ^\n`)
+					}
+				}
+				else {
+					echoToTerm(`^r${action.subject} is not an entity^\n`)
+				}
+			}
+			else {
+				echoToTerm(`^r${action.object} is not a company^\n`)
+			}
+			break
+		case "sharesize":
+			if (gameState.is_company(action.subject)) {
+				if(action.quantity > 0 && !isNaN(action.quantity)){
+					echoToTerm(gameState.setShareSize(action.subject, action.quantity))
+					normalizedCommand = `${action.subject} ${action.verb} ${action.quantity}`
+					addToHistory = true
+				}
+				else {
+					echoToTerm(`^rSharesize needs to be greater than 0^\n`)
+				}
+			}
+			else {
+				echoToTerm(`^r${action.subject} is not a company^\n`)
+			}
 			break
 		case "dividend":
-			echoToTerm(gameState.payDividends(action.subject, action.quantity))
-			normalizedCommand = `${action.subject} ${action.verb} ${action.quantity}`
-			addToHistory = true
+			if (gameState.is_company(action.subject)) {
+				echoToTerm(gameState.payDividends(action.subject, action.quantity))
+				normalizedCommand = `${action.subject} ${action.verb} ${action.quantity}`
+				addToHistory = true
+			}
+			else {
+				echoToTerm(`^r${action.subject} is not a company^\n`)
+			}
 			break
 		case "halfdividend":
-			echoToTerm(gameState.payHalfDividends(action.subject, action.quantity))
-			normalizedCommand = `${action.subject} ${action.verb} ${action.quantity}`
-			addToHistory = true
+			if (gameState.is_company(action.subject)) {
+				echoToTerm(gameState.payHalfDividends(action.subject, action.quantity))
+				normalizedCommand = `${action.subject} ${action.verb} ${action.quantity}`
+				addToHistory = true
+			}
+			else {
+				echoToTerm(`^r${action.subject} is not a company^\n`)
+			}
 			break
 		case "value":
-			echoToTerm(gameState.setValue(action.subject, action.quantity))
-			normalizedCommand = `${action.subject} ${action.verb} ${action.quantity}`
-			addToHistory = true
+			if (gameState.is_company(action.subject)) {
+				echoToTerm(gameState.setValue(action.subject, action.quantity))
+				normalizedCommand = `${action.subject} ${action.verb} ${action.quantity}`
+				addToHistory = true
+			}
+			else {
+				echoToTerm(`^r${action.subject} is not a company^\n`)
+			}
 			break
 		case "give":
-			echoToTerm(
-				gameState.moveCash(action.subject, action.object, action.quantity)
-			)
-			normalizedCommand = `${action.subject} ${action.verb} ${action.quantity} to ${action.object}`
-			addToHistory = true
+			if (gameState.is_entity(action.subject)) {
+				if (gameState.is_entity(action.object)) {
+					echoToTerm(
+						gameState.moveCash(action.subject, action.object, action.quantity)
+					)
+					normalizedCommand = `${action.subject} ${action.verb} ${action.quantity} to ${action.object}`
+					addToHistory = true
+				}
+				else {
+					echoToTerm(`^r${action.object} is not an entity^\n`)
+				}
+			}
+			else {
+				echoToTerm(`^r${action.subject} is not an entity^\n`)
+			}
 			break
 		case "cash":
-			echoToTerm(gameState.changeCash(action.subject, action.quantity))
-			normalizedCommand = `${action.subject} ${action.verb} ${action.quantity}`
-			addToHistory = true
+			if (gameState.is_entity(action.subject)) {
+				echoToTerm(gameState.changeCash(action.subject, action.quantity))
+				normalizedCommand = `${action.subject} ${action.verb} ${action.quantity}`
+				addToHistory = true
+			}
+			else {
+				echoToTerm(`^r${action.subject} is not an entity^\n`)
+			}
 			break
 		case "float":
-			echoToTerm(gameState.float(action.subject, action.quantity))
+			echoToTerm(gameState.float(action.subject, action.quantity, action.price)) // price in this context is the size of a company 10-share, 5-share etc.
+			normalizedCommand = `${action.subject} ${action.verb} ${action.quantity} ${action.price}`
+			addToHistory = true
+			break
+		case "player":
+			echoToTerm(gameState.add(action.subject, action.quantity));
 			normalizedCommand = `${action.subject} ${action.verb} ${action.quantity}`
 			addToHistory = true
 			break
