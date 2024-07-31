@@ -1,6 +1,4 @@
-# 18SH – an 18xx shell
-
-![Travis build status](https://img.shields.io/travis/msaari/18sh.svg?style=flat-square)
+# 18SH – an 18xx shell | cristopulos fork from [18SH](https://github.com/msaari/18sh)
 
 18SH is designed as a replacement for the spreadsheets used to calculate end of
 game scores in 18xx games. Spreadsheets are fine, especially if they're well
@@ -17,11 +15,13 @@ but it cannot track company value automatically or enforce certificate limit.
 compatibility is only guaranteed within major versions. If the first number
 changes in the version number, your saved games won't work anymore.
 
+This fork adds more restrictive subject checking (so no more accidental player creation mid-game because of a typo), support for shorting, variable company sizes (for games like 18USA, 1817 etc.) and validation for share count (only set number of shares of a given company can exist simultaneously defined by the company share size). It also exposes some additional information for the [18SH-Display](https://github.com/cristopulos/18sh-display) and therefore this app is NOT compatible with display project maintained by [msaari](https://github.com/msaari/18sh-display).
+
 ## Installing & requirements
 
 Clone from GitHub or download the files. The GitHub `master` is the current
 state of development and not always stable. For stable releases, get the
-[tagged release packages](https://github.com/msaari/18sh/releases). Then
+[tagged release packages](https://github.com/cristopulos/18sh/releases). Then
 install the Node modules with
 
 	npm install
@@ -68,9 +68,7 @@ you'll finally see the end results.
 ### BUY
 	<player|company> buys <count> <company> [@<price> [from <source>]]
 
-There's no need to introduce player or company names: just use any
-abbreviations you like, as long as you always refer to the same player or
-company with the same abbreviation. The names are case insensitive (and always
+To use any of the transactional commands involved entities must be defined beforehand (either by `player` or `float` for companies). 18SH will enforce this refusing to process commands involving undefined entities. The names are case insensitive (and always
 converted to upper case anyway).
 
 If you specify a price, that amount of money will be reducted from the buyer.
@@ -107,8 +105,16 @@ The opposite of buying shares. The same principles apply to `sell`: you can
 abbreviate the command. If you specify the price, the seller will be given that
 much money from the bank.
 
-If you try to sell more than you have, 18SH will sell to zero. You can't sell
+If you try to sell more than you have, 18SH will return an error. You can't sell
 to someone; for transactions like that, you always have to `buy`.
+
+### SHORT
+	<player> short <count> <company> [@price]
+ This command is identical to the `sell` one however it allows the player to sell to negative values and only if the player does not own any of the stock that they try to short. This command will leave player with negative shares that will have two effects:
+ - Number of shares that can be owned by players can exceed the `sharesize` limit as shorting creates "virtual" share
+ - Player owning short shares (negative number of shares) will be obliged to pay the bank amount of money that shorted company distributes as dividends
+
+Player then can get rid of negative shares by simply buying a share of shorted company at which point both of them will nulliify each other (effectively disintegrating the share bought).
 
 ### CASH
 	<player|company> cash <amount>
@@ -124,7 +130,7 @@ Company must be floated before its cash can be handled (see `float` below).
 
 Has the player or company move the specific amount of money to the target.
 
-A company must be floated before its cash can be handled (see `float` below).
+A company or player must be defined before its cash can be handled (see `float` and `player` below).
 
 Doing one of these:
 
@@ -140,19 +146,19 @@ is the same as doing
 	<company> dividends <number>
 
 This command has the company distribute `<number>` as a dividend. Use the
-per-share value, not the total dividend: if there are ten shares as usual and
+total dividend (this is important to mention because original version of this command requires per-share value): if there are ten shares as usual and
 the total sum is £200, the command is
 
-	GER dividends 20
+	GER dividends 200
 
-as the per-share dividend is £20. This command can be abbreviated up to `d`
+18SH will take care of properly distributing the dividend among share owners according to set company size - so 10-share company will yield £20 per share while 5-share company would £40. If for whatever reson amount of money to distribute is not a multiple of a sharesize 18SH will round down the amount to the integer value. This command can be abbreviated up to `d`
 and it also has an alias, `pays`. These are all identical to the command above:
 
-	GER d 20
-	GER pays 20
-	GER pay 20
-	GER pa 20
-	GER p 20
+	GER d 200
+	GER pays 200
+	GER pay 200
+	GER pa 200
+	GER p 200
 
 ### HALF DIVIDENDS
 	<company> halfdividends <number>
@@ -164,7 +170,7 @@ Thus if you do
 
 	NYC halfdividends 290
 
-NYC will retain 140 and each NYC share is paid 15.
+NYC will retain 140 and each NYC share is paid 15 (assuming 10-share company).
 
 If you want to change the default setting for half dividend rounding, 18SH
 supports two other methods. To round in favour of company, use the command
@@ -178,19 +184,18 @@ a 30% owner would get 7.5 that rounds down to 7), use
 	rounding 1837
 
 ### FLOAT
-	<company> float <number>
+	<company> float <number> <sharesize>
 
-Starts up a company and sets its cash to `<number>`. This needs to be done
+Starts up a company and sets its cash to `<number>`, with optional share size `<sharesize>` if it's not provided it is assumed to be regular 10-share company. This needs to be done
 first if you want to track company cash, because otherwise `<company> cash
-<amount>` will not work correctly but will instead assume `<company>` is a
-player.
+<amount>` will return an error as app is making sure that names of entites handling cash and shares are explicitly defined
 
 	NYC float 630
 
 In partial-cap games like 1846, you generally want to float companies like
 this:
 
-	GT float 0
+	GT float 0 // or GT float 0 10 - both will define GT as 10-share company
 	GT buys 10 GT @0
 
 Now 18SH knows GT exists and GT has 10 shares. Then the president can determine
@@ -208,6 +213,25 @@ company treasury gone).
 
 	close BIG4
 
+### SHARESIZE
+	<company> sharesize <sharesize>
+
+ Changes specified company sharesize to the provided number. So transforming 5-share NYC to 10-share company will look like this
+
+  	NYC sharesize 10
+   
+Upsizing the company will just increase the share limit, so if new shares should be created in the company you need to "buy" them the same way as it is shown in the `float` example so resulting commands would look like this:
+
+	NYC sharesize 10
+ 	NYC buys 5 NYC
+ 
+However be aware that downsizing the company (although I'm not aware of any 18xx that does that) will not enforce the number of shares to the new limit. Alternative command name - `size`
+
+### PLAYER
+	<playername> player <cash>
+ 
+ Creates a player with the specified amount of cash. This is required to later use this player name as a subject of transactions, as this version of 18SH requires players/companies to be defined before they can perform actions.
+ 
 ### REMOVE
 	remove <player>
 
@@ -250,9 +274,10 @@ the cash players have).
 The default currency is dollars, but you can specify any one-letter currency
 symbol when setting the bank size in order to change currency, like this:
 
-	banksize £2500
-	banksize €2500
-	banksize ₹2500
+	banksize £2500 // P, GBP, POUND also work as prefixes
+	banksize €2500 // E, EUR, EURO
+	banksize $2500 // S, DLR, DOLLAR 
+ 	banksize ¥2500 // Y, YEN
 
 If you wish to use 1825 style company credits where company money is not
 included in the bank, you can set that up with
@@ -330,7 +355,7 @@ for future reference.
 ## Cash Display
 
 The biggest problem with 18SH is that the cash situation is not visible to
-other players. This can be rectified with [18SH Cash Display](https://github.com/msaari/18sh-display).
+other players. This can be rectified with [18SH Cash Display](https://github.com/cristopulos/18sh-display).
 If you have a cash display server running up, you can connect 18SH to it and
 display the cash status on another screen.
 
@@ -339,9 +364,9 @@ Display GitHub page. 18SH will send the status information automatically to the
 server whenever things change, all you need to to is to tell where the server
 is. This is done by setting an environmental variable that points to the
 server. The exact method depends on your system ([see this helpful guide](https://www.schrodinger.com/kb/1842)).
-On my Mac running zsh, I do it like this:
+In Windows PowerShell this should look like this:
 
-	export DISPLAY18SH=https://example.com/18sh/
+	$Env:DISPLAY18SH="https://example.com/18sh/"
 
 In any case, the name of the environmental variable is `DISPLAY18SH`. Make sure
 you add the `18sh/` to the end of the URL of the server.
@@ -350,10 +375,6 @@ See Cash Display GitHub page for version compatibility information: 18SH and
 the server must have compatible version numbers.
 
 ![Example image](https://github.com/msaari/18sh-display/raw/master/sample-game.jpg)
-
-## BGG thread
-
-For discussion about 18SH, see [the BoardGameGeek 18SH thread](https://boardgamegeek.com/thread/2225619/18sh-command-line-replacement-spreadsheets).
 
 ## Dependencies
 
@@ -369,10 +390,6 @@ During development, [eslint](https://github.com/eslint/eslint) and
 code coverage is done with a combo of [mocha](https://github.com/mochajs/mocha),
 [chai](https://github.com/chaijs/chai) and [nyc](https://github.com/istanbuljs/nyc).
 
-## Changelog
-
-See [changelog.md](changelog.md) in the repo for change history, todo list and
-the unreleased features already available from the repo, but not in releases.
 
 ## License
 
