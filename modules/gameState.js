@@ -113,7 +113,7 @@ const shortShares = (actor, company, quantity, price) => {
 	const sharesOwnedPre = 0;
 	if(shares !== undefined)
 		Object.hasOwn(shares, company) ? shares[company] : 0
-	
+
 	let feedback = stockHoldings.changeSharesOwned(actor, company, quantity * -1, true)
 	const sharesOwnedPost = stockHoldings.getSharesOwned(actor)[company]
 	const actualSoldQuantity = sharesOwnedPre - sharesOwnedPost
@@ -207,7 +207,7 @@ const setShareSize = (company, new_size) => {
 const payDividends = (payingCompany, totalSum) => {
 	if (isNaN(totalSum)) totalSum = 0
 
-	let value = totalSum / getShareSize(payingCompany);
+	let value = Math.floor(totalSum / getShareSize(payingCompany));
 	let feedback = `${payingCompany} pays ^y${_getCurrency()}${value}^ per share.\n`
 	feedback += _payDividends(payingCompany, value)
 	return feedback

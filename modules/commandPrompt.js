@@ -246,7 +246,7 @@ const perform = (command, silent = false) => {
 			break
 		case "sharesize":
 			if (gameState.is_company(action.subject)) {
-				if(action.quantity > 0 && !isNaN(action.quantity)){
+				if (action.quantity > 0 && !isNaN(action.quantity)) {
 					echoToTerm(gameState.setShareSize(action.subject, action.quantity))
 					normalizedCommand = `${action.subject} ${action.verb} ${action.quantity}`
 					addToHistory = true
@@ -317,24 +317,44 @@ const perform = (command, silent = false) => {
 			}
 			break
 		case "float":
-			echoToTerm(gameState.float(action.subject, action.quantity, action.price)) // price in this context is the size of a company 10-share, 5-share etc.
-			normalizedCommand = `${action.subject} ${action.verb} ${action.quantity} ${action.price}`
-			addToHistory = true
+			if (!gameState.is_entity(action.subject)) {
+				echoToTerm(gameState.float(action.subject, action.quantity, action.price)) // price in this context is the size of a company 10-share, 5-share etc.
+				normalizedCommand = `${action.subject} ${action.verb} ${action.quantity} ${action.price}`
+				addToHistory = true
+			}
+			else {
+				echoToTerm(`^r${action.subject} already exists^\n`);
+			}
 			break
 		case "player":
-			echoToTerm(gameState.add(action.subject, action.quantity));
-			normalizedCommand = `${action.subject} ${action.verb} ${action.quantity}`
-			addToHistory = true
+			if (!gameState.is_entity(action.subject)) {
+				echoToTerm(gameState.add(action.subject, action.quantity));
+				normalizedCommand = `${action.subject} ${action.verb} ${action.quantity}`
+				addToHistory = true
+			}
+			else {
+				echoToTerm(`^r${action.subject} already exists^\n`);
+			}
 			break
 		case "close":
-			echoToTerm(gameState.close(action.object))
-			normalizedCommand = `${action.verb} ${action.object}`
-			addToHistory = true
+			if (gameState.is_company(action.object)) {
+				echoToTerm(gameState.close(action.object))
+				normalizedCommand = `${action.verb} ${action.object}`
+				addToHistory = true
+			}
+			else {
+				echoToTerm(`^r${action.object} is not a company^\n`);
+			}
 			break
 		case "remove":
-			echoToTerm(gameState.remove(action.object))
-			normalizedCommand = `${action.verb} ${action.object}`
-			addToHistory = true
+			if (gameState.is_player(action.object)) {
+				echoToTerm(gameState.remove(action.object))
+				normalizedCommand = `${action.verb} ${action.object}`
+				addToHistory = true
+			}
+			else {
+				echoToTerm(`^r${action.object} is not a player^\n`);
+			}
 			break
 		case "banksize":
 			echoToTerm(gameState.setBankSize(action.quantity, action.object))
