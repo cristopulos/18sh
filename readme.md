@@ -374,7 +374,7 @@ you add the `18sh/` to the end of the URL of the server.
 See Cash Display GitHub page for version compatibility information: 18SH and
 the server must have compatible version numbers.
 
-![Example image](https://github.com/msaari/18sh-display/raw/master/sample-game.jpg)
+![Example image](https://github.com/cristopulos/18sh-display/raw/master/sample-game.jpg)
 
 ## Dependencies
 
