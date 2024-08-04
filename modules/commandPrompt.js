@@ -177,7 +177,7 @@ const perform = (command, silent = false) => {
 					}
 					else {
 						const source = action.source ? action.source : "market";
-						echoToTerm(`^rThere is no ${action.quantity} stocks of ${action.subject} left in the ${source}^\n`)
+						echoToTerm(`^rThere is no ${action.quantity} stocks of ${action.object} left in the ${source}^\n`)
 					}
 				}
 				else {
