@@ -246,7 +246,7 @@ const payHalfDividends = (payingCompany, totalSum) => {
 	let perShare = 0
 	switch (rounding) {
 		case "UP": {
-			const halfFloored = Math.ceil(totalSum / getShareSize(payingCompany) * 2)
+			const halfFloored = Math.ceil(totalSum / (getShareSize(payingCompany) * 2))
 			companyRetains = halfFloored * getShareSize(payingCompany)
 			perShare = (totalSum - companyRetains) / getShareSize(payingCompany)
 			break
@@ -257,7 +257,7 @@ const payHalfDividends = (payingCompany, totalSum) => {
 			break
 		}
 		default: {
-			const halfFloored = Math.floor(totalSum / getShareSize(payingCompany) * 2)
+			const halfFloored = Math.floor(totalSum / (getShareSize(payingCompany) * 2))
 			companyRetains = halfFloored * getShareSize(payingCompany)
 			perShare = (totalSum - companyRetains) / getShareSize(payingCompany)
 		}
