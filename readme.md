@@ -315,6 +315,17 @@ game state like `holdings` or `values` are not considered for `undo`). 18SH has
 a history of commands entered, and `undo` simply removes the last command from
 the list and then resets the game state to that.
 
+### STYLE
+	style <style-name>
+
+Sets proper css styling for a game, as some games use defferent company colors, this options 
+aims to prevent clashes. This requires [18SH-Display](https://github.com/cristopulos/18sh-display) browser refresh.
+
+Currently suported styles:
+- default (most games)
+- 18usa
+- 18mex
+
 ### OPEN
 	open <game-name>
 
