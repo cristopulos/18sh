@@ -105,6 +105,15 @@ const parse = command => {
 		let verb = parts[0]
 		let object = parts[1].toUpperCase()
 		switch (verb) {
+			case "style":
+				result = {
+					verb: "style",
+					object,
+					subject: null,
+					quantity: 0,
+					comment
+				}
+				break
 			case "o":
 			case "op":
 			case "ope":

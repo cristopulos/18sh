@@ -16,6 +16,7 @@ const gameState = {
 	parameters: [],
 	income: [],
 	players: [],
+	style:"default",
 }
 
 /* Reset game state. */
@@ -29,8 +30,16 @@ const resetGameState = () => {
 	gameState.round = null
 	gameState.parameters = []
 	gameState.income = []
+	gameState.style = "default"
 	_setCurrency("$")
 }
+
+/* Set different CSS styling for comapny colors */
+const _setStyle = (name) => {
+	gameState.style = name;
+}
+
+const getStyle = () => gameState.style
 
 /* Set and get the game name */
 
@@ -409,6 +418,7 @@ const displayContent = () => {
 		round: _getRound(),
 		cash: {},
 		currency: _getCurrency(),
+		style: getStyle(),
 	}
 	if (gameState.bankSize) {
 		displayContent.cash.bank = {cash:_getBankRemains()}
@@ -623,6 +633,7 @@ module.exports = {
 	nextRound,
 	setParameter,
 	setIncome,
+	_setStyle,
 	_getBankRemains,
 	_getCash,
 	_getCompanyCash,

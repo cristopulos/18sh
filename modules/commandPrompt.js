@@ -131,6 +131,11 @@ const perform = (command, silent = false) => {
 	var addToHistory = false
 	let normalizedCommand = ""
 	switch (action.verb) {
+		case "style":
+			term(gameState._setStyle(action.object.toLowerCase()))
+			echoToTerm(`Style set to ${action.object.toLowerCase()}\n`)
+			addToHistory = true
+			break
 		case "holdings":
 			term(gameState.getHoldingsTable() + "\n")
 			addToHistory = false
